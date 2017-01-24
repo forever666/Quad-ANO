@@ -35,6 +35,8 @@ extern dt_flag_t f;
 ///////自定义变量//////
 extern int16_t TakeOffHeight;
 extern u8 TakeOffSpeed;
+extern u8 MyRemoteControlFlag;
+extern u8 TakeOffBegin;
 
 void ANO_DT_Send_Data(u8 *dataToSend , u8 length);
 void ANO_DT_Data_Exchange(void);

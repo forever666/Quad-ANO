@@ -138,6 +138,19 @@ void RC_Duty( float T , u16 tmp16_CH[CH_NUM] )
 			CH_Old[i] 		= CH[i];
 	}
 	//======================================================================
+	if((CH[AUX2]+1500)>1200)      //是否启用自己的上位机控制飞控
+	{
+		MyRemoteControlFlag=1;
+	}
+	else
+	{
+		MyRemoteControlFlag=0;
+	}
+	/*u8 showch[2];
+	showch[0]=(CH[AUX2]+1500)>>8;
+	showch[1]=(u8)(CH[AUX2]+1500);
+	ANO_DT_Send_Data(showch,2);*/
+	//======================================================================
 	Fly_Ready(T,wz_speed);		//解锁判断
 	//======================================================================
 	if(++NS_cnt>200)  // 400ms  未插信号线。
@@ -155,107 +168,122 @@ s16 locked_cnt;
 extern u8 acc_ng_cali;
 void Fly_Ready(float T,float height_speed_mm)
 {
-	if( CH_filter[2] < -400 )  							//油门小于10%
+	if(!MyRemoteControlFlag)
 	{
-		thr_stick_low = 1;
-		if( fly_ready && ready_cnt != -1 ) //解锁完成，且已退出解锁上锁过程
+		if( CH_filter[2] < -400 )  							//油门小于10%
 		{
-			//ready_cnt += 1000 *T;
-		}
-#if(USE_TOE_IN_UNLOCK)		
-		if( CH_filter[3] < -400 )							
-		{
-			if( CH_filter[1] > 400 )
+			thr_stick_low = 1;
+			if( fly_ready && ready_cnt != -1 ) //解锁完成，且已退出解锁上锁过程
 			{
-				if( CH_filter[0] > 400 )
+				//ready_cnt += 1000 *T;
+			}
+	#if(USE_TOE_IN_UNLOCK)		
+			if( CH_filter[3] < -400 )							
+			{
+				if( CH_filter[1] > 400 )
 				{
-					if( ready_cnt != -1 )				   //外八满足且退出解锁上锁过程
+					if( CH_filter[0] > 400 )
 					{
-						ready_cnt += 3 *1000 *T;
+						if( ready_cnt != -1 )				   //外八满足且退出解锁上锁过程
+						{
+							ready_cnt += 3 *1000 *T;
+						}
 					}
+
 				}
 
 			}
-
-		}
-#else
-		if( CH_filter[3] < -400 )					      //左下满足		
-		{
-			if( ready_cnt != -1 && fly_ready )	//判断已经退出解锁上锁过程且已经解锁
+	#else
+			if( CH_filter[3] < -400 )					      //左下满足		
 			{
-				ready_cnt += 1000 *T;
-			}
+				if( ready_cnt != -1 && fly_ready )	//判断已经退出解锁上锁过程且已经解锁
+				{
+					ready_cnt += 1000 *T;
+				}
 
-		}
-		else if( CH_filter[3] > 400 )      			//右下满足
-		{
-			if( ready_cnt != -1 && !fly_ready )	//判断已经退出解锁上锁过程且已经上锁
+			}
+			else if( CH_filter[3] > 400 )      			//右下满足
 			{
-				ready_cnt += 1000 *T;
+				if( ready_cnt != -1 && !fly_ready )	//判断已经退出解锁上锁过程且已经上锁
+				{
+					ready_cnt += 1000 *T;
+				}
+			}
+	#endif		
+			else if( ready_cnt == -1 )						//4通道(CH[3])回位
+			{
+				ready_cnt=0;
 			}
 		}
-#endif		
-		else if( ready_cnt == -1 )						//4通道(CH[3])回位
+		else
 		{
 			ready_cnt=0;
+			thr_stick_low = 0;
+		}
+
+		
+		if( ready_cnt > 300 ) // 600ms 
+		{
+			ready_cnt = -1;
+			//fly_ready = ( fly_ready==1 ) ? 0 : 1 ;
+			if( !fly_ready )
+			{
+				fly_ready = 1;
+				 acc_ng_cali = mpu6050.Gyro_CALIBRATE = 2;
+			}
+			else
+			{
+				fly_ready = 0;
+			}
+			
+		}
+
+			//////
+		if(CH_filter[2] < -400 && CH_filter[3] < -400 && (CH_filter[0]>400&&CH_filter[1]>400))
+		{
+			if(mag_cali_cnt<2000)
+			{
+				mag_cali_cnt += 1000*T;
+			}
+			else
+			{
+				Mag_CALIBRATED = 1;
+			}
+		
+		}
+		else
+		{
+			mag_cali_cnt = 0;
+		}
+		
+		if(fly_ready && (thr_stick_low ==1) && (ABS(height_speed_mm)<300))
+		{
+			if(locked_cnt < 2000)
+			{
+				locked_cnt  += 1000*T;
+			}
+			else
+			{
+				fly_ready = 0;
+			}
+			
+		}
+		else
+		{
+			locked_cnt = 0;
 		}
 	}
 	else
 	{
-		ready_cnt=0;
-		thr_stick_low = 0;
-	}
-
-	
-	if( ready_cnt > 300 ) // 600ms 
-	{
-		ready_cnt = -1;
-		//fly_ready = ( fly_ready==1 ) ? 0 : 1 ;
-		if( !fly_ready )
+		if(TakeOffBegin)
 		{
 			fly_ready = 1;
-			 acc_ng_cali = mpu6050.Gyro_CALIBRATE = 2;
+			acc_ng_cali = mpu6050.Gyro_CALIBRATE = 2;
 		}
 		else
 		{
 			fly_ready = 0;
 		}
-		
-	}
-
-		//////
-	if(CH_filter[2] < -400 && CH_filter[3] < -400 && (CH_filter[0]>400&&CH_filter[1]>400))
-	{
-		if(mag_cali_cnt<2000)
-		{
-			mag_cali_cnt += 1000*T;
-		}
-		else
-		{
-			Mag_CALIBRATED = 1;
-		}
-	
-	}
-	else
-	{
-		mag_cali_cnt = 0;
-	}
-	
-	if(fly_ready && (thr_stick_low ==1) && (ABS(height_speed_mm)<300))
-	{
-		if(locked_cnt < 2000)
-		{
-			locked_cnt  += 1000*T;
-		}
-		else
-		{
-			fly_ready = 0;
-		}
-		
-	}
-	else
-	{
-		locked_cnt = 0;
 	}
 }
 

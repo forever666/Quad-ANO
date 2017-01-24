@@ -276,7 +276,7 @@ void ZW_DTData_Anl(u8 *data_buf,u8 num)
 	{
 		if(MyRemoteControlFlag)
 		{
-			TakeOffBegin=0;
+			TakeOffBegin=1;
 		}
 		TakeOffHeight= (vs16)(*(data_buf+4)<<8)|*(data_buf+5) ;
 		TakeOffSpeed= (u8)(*(data_buf+6));
@@ -526,8 +526,10 @@ void ANO_DT_Data_Receive_Prepare(u8 data)
 
 void ANO_DT_Data_Receive_Anl(u8 *data_buf,u8 num)
 {
-	//ZW_DTData_Anl(data_buf,num);
-	ANO_DTData_Anl(data_buf,num);
+	if(MyRemoteControlFlag)
+		ZW_DTData_Anl(data_buf,num);
+	else
+		ANO_DTData_Anl(data_buf,num);
 }
 
 void ANO_DT_Send_Version(u8 hardware_type, u16 hardware_ver,u16 software_ver,u16 protocol_ver,u16 bootloader_ver)

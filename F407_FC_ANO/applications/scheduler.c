@@ -48,10 +48,11 @@ void Loop_check()  //TIME INTTERRUPT
 		LED_1ms_DRV( );								//20级led渐变显示
 }
 
+//u8 da[2]={0x01,0x25};
 void Duty_1ms()
 {
 	Get_Cycle_T(1)/1000000.0f;
-
+    //ANO_DT_Send_Data(da,2);	
 	ANO_DT_Data_Exchange();												//数传通信定时调用
 }
 

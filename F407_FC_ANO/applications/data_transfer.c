@@ -38,10 +38,10 @@ u8 checkdata_to_send,checksum_to_send;
 void ANO_DT_Send_Data(u8 *dataToSend , u8 length)
 {
 #ifdef ANO_DT_USE_USB_HID
-	Usb_Hid_Adddata(data_to_send,length);
+	Usb_Hid_Adddata(dataToSend,length);
 #endif
 #ifdef ANO_DT_USE_USART2
-	Usart2_Send(data_to_send, length);
+	Usart2_Send(dataToSend, length);
 #endif
 }
 static void ANO_DT_Send_Check(u8 head, u8 check_sum)
@@ -258,63 +258,40 @@ void ANO_DT_Data_Exchange(void)
 }
 
 
-
-/////////////////////////////////////////////////////////////////////////////////////
-//Data_Receive_Prepare函数是协议预解析，根据协议的格式，将收到的数据进行一次格式性解析，格式正确的话再进行数据解析
-//移植时，此函数应由用户根据自身使用的通信方式自行调用，比如串口每收到一字节数据，则调用此函数一次
-//此函数解析出符合格式的数据帧后，会自行调用数据解析函数
-void ANO_DT_Data_Receive_Prepare(u8 data)
+///////////////////////////////自己开发的上位机使用的数据协议解析////////////
+///////////////////////////////自己开发的上位机使用的数据协议解析////////////
+int16_t TakeOffHeight=0;
+u8 TakeOffSpeed=0;
+u8 MyRemoteControlFlag=0;
+u8 TakeOffBegin=0;
+void ZW_DTData_Anl(u8 *data_buf,u8 num)
 {
-	static u8 RxBuffer[50];
-	static u8 _data_len = 0,_data_cnt = 0;
-	static u8 state = 0;
+	u8 sum = 0;
+	for(u8 i=0;i<(num-1);i++)
+		sum += *(data_buf+i);
+	if(!(sum==*(data_buf+num-1)))		return;		//判断sum
+	if(!(*(data_buf)==0xAA && *(data_buf+1)==0xAF))		return;		//判断帧头
 	
-	if(state==0&&data==0xAA)
+	if(*(data_buf+2)==0X01)
 	{
-		state=1;
-		RxBuffer[0]=data;
+		if(MyRemoteControlFlag)
+		{
+			TakeOffBegin=0;
+		}
+		TakeOffHeight= (vs16)(*(data_buf+4)<<8)|*(data_buf+5) ;
+		TakeOffSpeed= (u8)(*(data_buf+6));
 	}
-	else if(state==1&&data==0xAF)
-	{
-		state=2;
-		RxBuffer[1]=data;
-	}
-	else if(state==2&&data<0XF1)
-	{
-		state=3;
-		RxBuffer[2]=data;
-	}
-	else if(state==3&&data<50)
-	{
-		state = 4;
-		RxBuffer[3]=data;
-		_data_len = data;
-		_data_cnt = 0;
-	}
-	else if(state==4&&_data_len>0)
-	{
-		_data_len--;
-		RxBuffer[4+_data_cnt++]=data;
-		if(_data_len==0)
-			state = 5;
-	}
-	else if(state==5)
-	{
-		state = 0;
-		RxBuffer[4+_data_cnt]=data;
-		ANO_DT_Data_Receive_Anl(RxBuffer,_data_cnt+5);
-	}
-	else
-		state = 0;
 }
-/////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////自己开发的上位机使用的数据协议解析////////////
+///////////////////////////////自己开发的上位机使用的数据协议解析////////////
+
+
 //Data_Receive_Anl函数是协议数据解析函数，函数参数是符合协议格式的一个数据帧，该函数会首先对协议数据进行校验
 //校验通过后对数据进行解析，实现相应功能
 //此函数可以不用用户自行调用，由函数Data_Receive_Prepare自动调用
 u16 flash_save_en_cnt = 0;
 u16 RX_CH[CH_NUM];
-
-void ANO_DT_Data_Receive_Anl(u8 *data_buf,u8 num)
+void ANO_DTData_Anl(u8 *data_buf,u8 num)
 {
 	u8 sum = 0;
 	for(u8 i=0;i<(num-1);i++)
@@ -494,6 +471,63 @@ void ANO_DT_Data_Receive_Anl(u8 *data_buf,u8 num)
 			checksum_to_send = sum;
 		}
 	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+//Data_Receive_Prepare函数是协议预解析，根据协议的格式，将收到的数据进行一次格式性解析，格式正确的话再进行数据解析
+//移植时，此函数应由用户根据自身使用的通信方式自行调用，比如串口每收到一字节数据，则调用此函数一次
+//此函数解析出符合格式的数据帧后，会自行调用数据解析函数
+void ANO_DT_Data_Receive_Prepare(u8 data)
+{
+	static u8 RxBuffer[50];
+	static u8 _data_len = 0,_data_cnt = 0;
+	static u8 state = 0;
+	
+	if(state==0&&data==0xAA)
+	{
+		state=1;
+		RxBuffer[0]=data;
+	}
+	else if(state==1&&data==0xAF)
+	{
+		state=2;
+		RxBuffer[1]=data;
+	}
+	else if(state==2&&data<0XF1)
+	{
+		state=3;
+		RxBuffer[2]=data;
+	}
+	else if(state==3&&data<50)
+	{
+		state = 4;
+		RxBuffer[3]=data;
+		_data_len = data;
+		_data_cnt = 0;
+	}
+	else if(state==4&&_data_len>0)
+	{
+		_data_len--;
+		RxBuffer[4+_data_cnt++]=data;
+		if(_data_len==0)
+			state = 5;
+	}
+	else if(state==5)
+	{
+		state = 0;
+		RxBuffer[4+_data_cnt]=data;
+		ANO_DT_Data_Receive_Anl(RxBuffer,_data_cnt+5);
+	}
+	else
+		state = 0;
+}
+/////////////////////////////////////////////////////////////////////////////////////
+
+
+void ANO_DT_Data_Receive_Anl(u8 *data_buf,u8 num)
+{
+	//ZW_DTData_Anl(data_buf,num);
+	ANO_DTData_Anl(data_buf,num);
 }
 
 void ANO_DT_Send_Version(u8 hardware_type, u16 hardware_ver,u16 software_ver,u16 protocol_ver,u16 bootloader_ver)

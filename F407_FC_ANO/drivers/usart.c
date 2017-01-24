@@ -83,10 +83,10 @@ u8 count=0;
 
 u8 Rx_Buf[256];	//串口接收缓存
 
+//u8 da[2]={0x01,0x25};
 void Usart2_IRQ(void)
 {
 	u8 com_data;
-	
 	if(USART2->SR & USART_SR_ORE)//ORE中断
 	{
 		com_data = USART2->DR;
@@ -99,6 +99,7 @@ void Usart2_IRQ(void)
 
 		com_data = USART2->DR;
 		ANO_DT_Data_Receive_Prepare(com_data);
+		//Usart2_Send(&com_data,1);
 	}
 	//发送（进入移位）中断
 	if( USART_GetITStatus(USART2,USART_IT_TXE ) )

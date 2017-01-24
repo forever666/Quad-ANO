@@ -32,7 +32,11 @@ typedef struct
 
 extern dt_flag_t f;
 
+///////自定义变量//////
+extern int16_t TakeOffHeight;
+extern u8 TakeOffSpeed;
 
+void ANO_DT_Send_Data(u8 *dataToSend , u8 length);
 void ANO_DT_Data_Exchange(void);
 void ANO_DT_Data_Receive_Prepare(u8 data);
 void ANO_DT_Data_Receive_Anl(u8 *data_buf,u8 num);
